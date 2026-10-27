@@ -1,0 +1,12 @@
+arm 0 world 0 mean 0.2265 q99 0.614
+arm 0 world 1 mean 0.2300 q99 0.614
+arm 0 world 2 mean 0.2368 q99 0.614
+arm 0 world 3 mean 0.2181 q99 0.618
+arm 0 world 4 mean 0.2258 q99 0.611
+arm 0 world 5 mean 0.2173 q99 0.612
+arm 1 world 0 mean 0.2326 q99 0.999
+arm 1 world 1 mean 0.2164 q99 0.999
+arm 1 world 2 mean 0.2166 q99 0.999
+arm 1 world 3 mean 0.2265 q99 0.999
+arm 1 world 4 mean 0.2272 q99 0.999
+arm 1 world 5 mean 0.2207 q99 0.999

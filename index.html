@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Evening — a ping reads what scouts wrote</title>
+<style>
+  :root{--ink:#e8e4dc;--dim:#8f897c;--line:#2c2a24;--bg:#12110f;--panel:#1a1814;
+        --seek:#e0a458;--avoid:#6fb3d2;--you:#e8e4dc;--ok:#7fd4a8;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 "Iowan Old Style",Georgia,serif}
+  .wrap{max-width:1080px;margin:0 auto;padding:22px 16px 40px}
+  h1{font-size:24px;margin:0 0 4px;font-weight:600;letter-spacing:-.01em}
+  .sub{color:var(--dim);margin:0 0 20px;max-width:760px}
+  .grid{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+  canvas.world{image-rendering:pixelated;background:#000;border:1px solid var(--line);
+       width:440px;height:440px;max-width:100%}
+  .side{flex:1;min-width:280px;max-width:560px}
+  .row{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .row span:last-child{font-variant-numeric:tabular-nums}
+  button{font:inherit;font-size:13.5px;background:var(--panel);color:var(--ink);border:1px solid var(--line);
+         padding:7px 12px;margin:10px 6px 0 0;cursor:pointer;border-radius:3px}
+  button:hover{border-color:var(--dim)} button:disabled{opacity:.45;cursor:default}
+  button:focus-visible{outline:2px solid var(--ok);outline-offset:2px}
+  button.on{border-color:var(--ink)}
+  .seek{color:var(--seek)} .avoid{color:var(--avoid)}
+  .verdict{margin-top:14px;padding:12px 14px;background:var(--panel);border-left:3px solid var(--line);font-size:14px;min-height:52px}
+  canvas.chart{width:100%;height:220px;background:var(--panel);border:1px solid var(--line);margin-top:14px}
+  .legend{font-size:12.5px;color:var(--dim);margin-top:6px}
+  .legend b{font-weight:600}
+  .note{color:var(--dim);font-size:13.5px;margin-top:22px;max-width:820px}
+  table{border-collapse:collapse;font-size:13.5px;margin-top:8px}
+  td,th{padding:4px 10px 4px 0;border-bottom:1px solid var(--line);text-align:left;font-weight:normal}
+  th{color:var(--dim)}
+  @media (max-width:520px){canvas.world{width:100%;height:auto;aspect-ratio:1}}
+</style>
+<div class="wrap">
+  <h1>Evening</h1>
+  <p class="sub">Scouts read a wave field and lay material that changes how waves travel
+  (Cell 0, Aug 31). Here you choose their history — seek the field's bright places first, or
+  avoid them first. Then the scouts are removed, the material is frozen, and sixteen pings
+  are sent through it. The reader never sees the map: only what sixteen receivers hear.</p>
+
+  <div class="grid">
+    <canvas class="world" id="cv" width="128" height="128" aria-label="material map"></canvas>
+    <div class="side">
+      <div>History:
+        <button id="hSeek" class="on"><span class="seek">seek</span> → <span class="avoid">avoid</span></button>
+        <button id="hAvoid"><span class="avoid">avoid</span> → <span class="seek">seek</span></button>
+        <button id="hFree">free hand</button>
+      </div>
+      <div id="freeRow" style="display:none">While writing, the scouts
+        <button id="mode"><span class="seek">seek</span></button> (click to flip)</div>
+      <button id="write">Write 4000 steps</button>
+      <button id="read" disabled>Freeze &amp; read with 16 pings</button>
+      <div class="row"><span>step</span><span id="step">0</span></div>
+      <div class="row"><span>scouts now</span><span id="now">—</span></div>
+      <div class="row"><span>steps seeking / avoiding</span><span id="split">0 / 0</span></div>
+      <div class="row"><span>mean material</span><span id="mm">—</span></div>
+      <div class="verdict" id="verdict">Write a world, then read it.</div>
+      <canvas class="chart" id="chart" width="560" height="220" aria-label="spectrum heard by the receivers"></canvas>
+      <div class="legend">Band power heard by the receivers, averaged over the 16 pairs.
+        <b class="seek">seek → avoid</b> and <b class="avoid">avoid → seek</b> are the mean spectra
+        of the 48 confirmatory Python worlds; <b>white</b> is this world.</div>
+    </div>
+  </div>
+
+  <div class="note" id="results"></div>
+</div>
+<script src="evening.js"></script>
+<script>
+const MODEL = /*MODEL*/null;
+const E_ = window.Evening, N = E_.N;
+const cv = document.getElementById('cv'), cx = cv.getContext('2d'), img = cx.createImageData(N, N);
+let world = null, hist = 'seek', running = false, nSeek = 0, nAvoid = 0;
+
+function drawField(f, kind) {
+  let lo = 1e9, hi = -1e9;
+  if (kind === 'M') { lo = 0; hi = 1; } else for (let i = 0; i < f.length; i++) { if (f[i] < lo) lo = f[i]; if (f[i] > hi) hi = f[i]; }
+  const d = img.data, sp = (hi - lo) || 1;
+  for (let i = 0; i < N * N; i++) {
+    let r, g, b;
+    if (kind === 'M') { const u = (f[i] - lo) / sp; r = 340 * u * u; g = 300 * u * u * u; b = 90 + 300 * u * (1 - u); }
+    else { const u = Math.tanh(f[i] * 25); const m = world ? world.M[i] : 0;
+      r = 40 * m + (u > 0 ? 255 * u : 0); g = 30 * m + 120 * Math.abs(u); b = 60 * m + (u < 0 ? -255 * u : 0); }
+    const j = i * 4; d[j] = Math.min(255, r); d[j + 1] = Math.min(255, g); d[j + 2] = Math.min(255, b); d[j + 3] = 255;
+  }
+  cx.putImageData(img, 0, 0);
+}
+function markPairs(active) {
+  cx.save();
+  E_.PAIRS.forEach(([r, c], k) => {
+    cx.fillStyle = k === active ? '#ffffff' : 'rgba(255,255,255,.45)';
+    cx.fillRect(c, r, 1, 1); cx.fillRect((c + 20) % N, r, 1, 1);
+  });
+  cx.restore();
+}
+function readout() {
+  document.getElementById('step').textContent = world ? world.step : 0;
+  document.getElementById('now').innerHTML = world ? (world.sign > 0 ? '<span class="seek">seek</span>' : '<span class="avoid">avoid</span>') : '—';
+  document.getElementById('split').textContent = nSeek + ' / ' + nAvoid;
+  if (world) { let m = 0; for (let i = 0; i < N * N; i++) m += world.M[i]; document.getElementById('mm').textContent = (m / N / N).toFixed(3); }
+}
+
+function setHist(h) {
+  hist = h; ['hSeek', 'hAvoid', 'hFree'].forEach(id => document.getElementById(id).classList.remove('on'));
+  document.getElementById({ seek: 'hSeek', avoid: 'hAvoid', free: 'hFree' }[h]).classList.add('on');
+  document.getElementById('freeRow').style.display = h === 'free' ? 'block' : 'none';
+}
+document.getElementById('hSeek').onclick = () => setHist('seek');
+document.getElementById('hAvoid').onclick = () => setHist('avoid');
+document.getElementById('hFree').onclick = () => setHist('free');
+document.getElementById('mode').onclick = () => {
+  if (!world) return; world.sign = -world.sign;
+  document.getElementById('mode').innerHTML = world.sign > 0 ? '<span class="seek">seek</span>' : '<span class="avoid">avoid</span>';
+};
+
+document.getElementById('write').onclick = () => {
+  if (running) return;
+  world = new E_.World((Date.now() & 0x7fffffff) | 1);
+  world.sign = hist === 'avoid' ? -1 : 1;
+  nSeek = 0; nAvoid = 0; running = true;
+  document.getElementById('read').disabled = true;
+  document.getElementById('write').disabled = true;
+  document.getElementById('verdict').textContent = 'Scouts are writing…';
+  drawChart(null);
+  const tick = () => {
+    for (let s = 0; s < 20 && world.step < 4000; s++) {
+      if (hist !== 'free' && world.step === 2000) world.sign = -world.sign;
+      world.stepOnce(); if (world.sign > 0) nSeek++; else nAvoid++;
+    }
+    drawField(world.M, 'M'); readout();
+    if (world.step < 4000) requestAnimationFrame(tick);
+    else { running = false; document.getElementById('read').disabled = false; document.getElementById('write').disabled = false;
+      document.getElementById('verdict').textContent = 'Written. The scouts are gone; the material is frozen. Read it.'; }
+  };
+  tick();
+};
+
+document.getElementById('read').onclick = async () => {
+  if (!world || running) return;
+  running = true; document.getElementById('read').disabled = true; document.getElementById('write').disabled = true;
+  const feats = [];
+  for (let k = 0; k < 16; k++) {
+    const [r, c] = E_.PAIRS[k];
+    document.getElementById('verdict').textContent = 'Ping ' + (k + 1) + ' of 16…';
+    let last = 0;
+    const tr = E_.ping(world.M, [r, c], [r, (c + 20) % N], E_.T1, (psi, t) => { if (t - last >= 15) { last = t; drawField(psi, 'psi'); markPairs(k); } });
+    feats.push(E_.spec(tr));
+    await new Promise(res => setTimeout(res, 0));
+  }
+  const f = feats[0].map((_, b) => feats.reduce((s, x) => s + x[b], 0) / 16);
+  drawField(world.M, 'M'); markPairs(-1);
+  drawChart(f); classify(f);
+  running = false; document.getElementById('read').disabled = false; document.getElementById('write').disabled = false;
+};
+
+function classify(f) {
+  if (!MODEL) return;
+  const z = v => v.map((x, i) => (x - MODEL.mu[i]) / MODEL.sd[i]);
+  const zf = z(f), d0 = Math.hypot(...z(MODEL.c0).map((v, i) => v - zf[i])), d1 = Math.hypot(...z(MODEL.c1).map((v, i) => v - zf[i]));
+  const said = d0 < d1 ? '<b class="seek">seek → avoid</b>' : '<b class="avoid">avoid → seek</b>';
+  const truth = hist === 'free' ? 'free hand (' + nSeek + ' seeking, ' + nAvoid + ' avoiding)' :
+    (hist === 'seek' ? '<span class="seek">seek → avoid</span>' : '<span class="avoid">avoid → seek</span>');
+  const right = hist === 'free' ? '' : ((d0 < d1) === (hist === 'seek') ? ' <span style="color:var(--ok)">Correct.</span>' : ' Wrong.');
+  document.getElementById('verdict').innerHTML = 'The receivers say: ' + said + '. Distance ratio ' +
+    (Math.min(d0, d1) / Math.max(d0, d1)).toFixed(2) + ' (lower = surer). You wrote: ' + truth + '.' + right;
+}
+
+function drawChart(f) {
+  const c = document.getElementById('chart'), g = c.getContext('2d'), W = c.width, H = c.height;
+  g.clearRect(0, 0, W, H);
+  if (!MODEL) return;
+  const curves = [[MODEL.c0, getComputedStyle(document.body).getPropertyValue('--seek')], [MODEL.c1, getComputedStyle(document.body).getPropertyValue('--avoid')]];
+  if (f) curves.push([f, '#e8e4dc']);
+  let lo = 1e9, hi = -1e9; curves.forEach(([v]) => v.forEach(x => { lo = Math.min(lo, x); hi = Math.max(hi, x); }));
+  lo -= 0.5; hi += 0.5;
+  const X = i => 40 + i * (W - 60) / 11, Y = v => H - 28 - (v - lo) / (hi - lo) * (H - 44);
+  g.strokeStyle = '#2c2a24'; g.fillStyle = '#8f897c'; g.font = '11px Georgia';
+  MODEL.centres.forEach((w, i) => { if (i % 2 === 0) g.fillText(w.toFixed(2), X(i) - 10, H - 10); });
+  g.fillText('ω', W - 16, H - 10); g.fillText('log power', 4, 14);
+  curves.forEach(([v, col]) => { g.strokeStyle = col.trim(); g.lineWidth = 2; g.beginPath();
+    v.forEach((x, i) => i ? g.lineTo(X(i), Y(x)) : g.moveTo(X(i), Y(x))); g.stroke(); });
+}
+
+if (MODEL && MODEL.html) document.getElementById('results').innerHTML = MODEL.html;
+drawChart(null);
+</script>
+</html>
