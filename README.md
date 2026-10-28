@@ -145,8 +145,9 @@ The generation map, 4 worlds per point:
 
 - **f(p) > p everywhere below ≈ 0.92**, so the only stable state is seek-first. The
   avoid-first state is not merely noisy, it is **unstable**. Near p = 0 the slope is
-  about 5: 5% seek-first scouts become 38% in the next generation. A perfect receptor
-  would not save it.
+  about 5: 5% seek-first scouts become 38% in the next generation. (An earlier version
+  of this README said a perfect receptor would not save it. That was wrong — see
+  "Correction: what a sharper reader would do" below.)
 - **Quorum** makes p = 0 an exact fixed point (f_q(0) = 0.00), but still an unstable
   one (f_q(0.05) = 0.24). Lineages sit there until a spatially clustered reading error
   slips through. Survivors below 0.5, generations 0–8: 8, 8, 8, 4, 3, 3, 2, 2, 2.
@@ -156,15 +157,48 @@ The generation map, 4 worlds per point:
 avoid-first recessive. The avoid-first signature is an *absence* — a thin background
 between saturated walls — and a few seekers fill the background in. Seek-first's
 signature is a *presence*, and survives contamination. The lesson for any
-medium-as-genome: **a heritable state has to be written as something present, not as
-something missing.** Two inheritable states need two presences, for example two
-material species that the ping hears at different frequencies. A seek-first fraction
-written as more or less of the same material cannot be both.
+medium-as-genome: **a state written as an absence gets only a narrow basin; two
+presences give two wide ones.**
 
-The same structure appears in Eigen's error threshold: heredity needs copying fidelity
-above a threshold set by how strongly the competing state amplifies. Here the
-amplification (slope ≈ 5) is so strong that no fidelity is high enough for the
-recessive state.
+### Correction: what a sharper reader would do (derived, not yet run)
+
+An earlier version of this section said no fidelity could save the recessive state.
+That was wrong. Model each site as thresholding a noisy scalar:
+f(p) = Φ(z(p)), z(p) = (μ(p) − θ)/σ. Inverting the measured map:
+
+| p | 0 | 0.05 | 0.10 | 0.20 | 1 |
+|---|---|---|---|---|---|
+| z(p) = Φ⁻¹(f(p)) | −1.19 | −0.31 | +0.31 | +1.15 | +1.39 |
+
+The total separation is about 2.6σ (the receptor's 0.876 single-ping accuracy alone
+implies Δ/σ ≈ 2.3), and z(p) is strongly concave: 17.6σ per unit p near 0, 0.3σ between
+0.2 and 1. **That concavity is the dominance.** Averaging k² independent pings per site
+divides σ by k, so f_k(p) = Φ(k·z(p)):
+
+- **k = 1 (measured):** f > p everywhere below 0.92. One attractor.
+- **k = 2 (4 pings/site):** f(0) = 0.009, but f(0.01) = 0.021 and f(0.02) = 0.046.
+  Still one attractor.
+- **k = 3 (9 pings/site):** f(0) ≈ 0.0002 and f(0.005) ≈ 0.0005. **A stable avoid-first
+  state appears**, with its basin boundary near p ≈ 0.033. Escaping takes about 3 of 64
+  sites misreading together, roughly 3·10⁻⁷ per generation if errors are independent.
+
+So dominance and heredity can coexist. Concavity does not forbid the recessive state;
+it shrinks its basin to a few percent. The quorum failed for an identifiable reason: it
+took a **majority of thresholded decisions** (at p = 0.05 each site already reads
+seek-first 38% of the time, and a majority of 9 at 0.38 still gives 0.24, the measured
+f_q(0.05)). Averaging the continuous evidence **before** thresholding keeps that
+information. Average before you decide.
+
+For **two presences** (e.g. one species raising the mass term, read as a low-frequency
+cutoff, the other changing wave speed, read as arrival time), z(p) is roughly linear and
+f(p) = Φ((p − ½)Δ/σ) is bistable when Δ/σ > √(2π) ≈ 2.5. Today's receptor sits right at
+that line; 4 pings per site would give deep, symmetric states near 0.005 and 0.995.
+
+**Untested prediction:** with 9 pings averaged per site (3 × 3, spaced to straddle
+walls), at least 6 of 8 individual-arm avoid-first lineages hold for 8 generations;
+with 4 pings, they do not. Caveat: the material is correlated over about a wall's width,
+so 9 nearby pings may cut noise by less than 3×. At an effective k of 2.5 the low fixed
+point barely exists.
 
 ## Not claimed
 
