@@ -8,6 +8,12 @@ p < 0.0005), 8 pings also perfectly, and one ping at 0.83. Mean material reaches
 worlds, that history turns out to be partly a difference in *amount*, which corrects
 Aug 31.
 
+**Part 2 (a reader that writes back):** when children's schedules are set only by
+pinging their parents' material, no heredity appears. The seek-first state is
+**dominant**: 5% seek-first parents become 38% seek-first children, so every lineage
+converges to it. Avoid-first is recessive and unstable (0 of 8 lineages keep it; a
+designed quorum vote keeps 2 of 8). Pre-registered, prediction held.
+
 Live page: **[anttiluode.github.io/Evening](https://anttiluode.github.io/Evening/)**.
 Choose a history, watch the scouts write it, then freeze the material and read it with
 16 pings. The page shows what the receivers heard and which history they name.
@@ -104,12 +110,67 @@ that distribution as transmission vs. frequency. Avoid-first lets more through a
 "Free hand" lets you flip the scouts between seeking and avoiding while they write; the
 reader then says which of the two trained histories the result sounds like.
 
+## Part 2 — a reader that writes back: does the loop carry a bit across generations?
+
+([PREREG_INHERIT.md](PREREG_INHERIT.md), pushed as `bf9c072` before the runs; code in
+`inherit.py`, `inherit_run.py`, `decide_inherit.py`.)
+
+**The loop.** One bit is heritable: seek-first or avoid-first. A population with
+seek-first fraction p writes for 4000 steps, then its scouts are removed.
+- **Reading:** 64 sites on an 8 × 8 grid each fire one local ping. A fixed receptor (a
+  nearest-centroid table frozen from part 1's 48 pure worlds; single-pair accuracy
+  0.876) turns each site's spectrum into a decision.
+- **Next generation:** a fresh world with blank material, where child i takes site
+  i mod 64's decision.
+
+**No genome is copied.** The only channel between generations is material → ping →
+receptor. Heredity would mean a lineage remembers its ancestors: the generation map
+p′ = f(p) needs a stable state on both sides.
+
+![inheritance](results/inherit.png)
+
+**Result: no heredity. One state is dominant.**
+
+| | prediction | result | |
+|---|---|---|---|
+| H1 | f(0) ≤ 0.2 and f(0.5) ≥ 0.8 | f(0) = 0.117, f(0.5) = 0.930 | pass |
+| H2 | individual receptor: **no** heredity | avoid-first lineages still avoid-first at gen 8: **0 / 8**; seek-first: 8 / 8 | pass |
+| H3 | quorum (designed amplifier): heredity | **2 / 8** vs 8 / 8 | **fail** |
+
+The generation map, 4 worlds per point:
+
+| p | 0 | .05 | .10 | .15 | .20 | .25 | .50 | .75 | .90 | 1 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| f(p), individual | 0.117 | 0.379 | 0.621 | 0.758 | 0.875 | 0.895 | 0.930 | 1.000 | 1.000 | 0.918 |
+
+- **f(p) > p everywhere below ≈ 0.92**, so the only stable state is seek-first. The
+  avoid-first state is not merely noisy, it is **unstable**. Near p = 0 the slope is
+  about 5: 5% seek-first scouts become 38% in the next generation. A perfect receptor
+  would not save it.
+- **Quorum** makes p = 0 an exact fixed point (f_q(0) = 0.00), but still an unstable
+  one (f_q(0.05) = 0.24). Lineages sit there until a spatially clustered reading error
+  slips through. Survivors below 0.5, generations 0–8: 8, 8, 8, 4, 3, 3, 2, 2, 2.
+  Metastable, not heritable. The individual arm loses all 8 at generation 2.
+
+**What emerged, without being coded:** dominance. Seek-first is dominant and
+avoid-first recessive. The avoid-first signature is an *absence* — a thin background
+between saturated walls — and a few seekers fill the background in. Seek-first's
+signature is a *presence*, and survives contamination. The lesson for any
+medium-as-genome: **a heritable state has to be written as something present, not as
+something missing.** Two inheritable states need two presences, for example two
+material species that the ping hears at different frequencies. A seek-first fraction
+written as more or less of the same material cannot be both.
+
+The same structure appears in Eigen's error threshold: heredity needs copying fidelity
+above a threshold set by how strongly the competing state amplifies. Here the
+amplification (slope ≈ 5) is so strong that no fidelity is high enough for the
+recessive state.
+
 ## Not claimed
 
 - **That the reader reads arrangement.** It reads a value distribution.
-- **Inheritance.** This is the reading half. The next rung is a scout whose parameters
-  are set by what a ping tells it about the material it is standing in: a reader that
-  writes back.
+- **Inheritance.** Part 2 measured its absence for this two-state code. A lineage keeps
+  only the dominant state, and it would keep that one from any start.
 - **Anything about the copied Cell 0 code beyond this use.** Its budget leaks 1e-4
   through `clip(M, 0, 1)` after deposition (Gate 0); left unchanged so the writer is
   exactly Aug 31's.
@@ -124,4 +185,8 @@ python main.py order recency     # reader, attackers, surrogates
 python decide.py
 python make_figures.py && python make_page.py
 node check_js_worlds.js          # does the JS writer match?
+python inherit_run.py indiv      # part 2 lineages (about 15 min each arm)
+python inherit_run.py quorum
+python inherit_run.py map
+python decide_inherit.py
 ```
